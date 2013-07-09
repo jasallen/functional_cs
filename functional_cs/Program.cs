@@ -16,19 +16,25 @@ namespace functional_cs
 
         static void Main(string[] args)
         {
+
+            // Set up Stream
             var http = new HttpClient();
             var url = "http://api.thriftdb.com/api.hnsearch.com/items/_search?start={0}&limit={1}&q=nsa";
+            var hits = GetHNhits(http, url, 0);
 
-            var hits = GetHNhits(http, url, 0).Take(20).ToList();
+            var map = hits.Select(_ => (int)_.item.points);
 
-            var titles = hits.Select(_ => _.item.title == null ? _.item.text : _.item.title);
+            var reduction = map.Take(20).Aggregate(new{count=0,points=0}, (working , current) => new{count=working.count+1, points=(current - working.points) / (working.count+1) + working.points } );
 
-            foreach (var title in titles)
-            {
-                Console.WriteLine(title);
-            }
-
+            Console.WriteLine(reduction);
             Console.ReadLine();
+
+            //var titles = hits.Select(_ => _.item.title == null ? _.item.text : _.item.title);
+            //foreach (var title in titles)
+            //{
+            //    Console.WriteLine(title);
+            //}
+
         }
 
         private static IEnumerable<dynamic> GetHNhits(HttpClient http, string urltemplate, int nextResult)
