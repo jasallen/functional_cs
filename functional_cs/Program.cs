@@ -19,20 +19,24 @@ namespace functional_cs
 
         static void Main(string[] args)
         {
-
             // Set up Stream
             var http = new HttpClient();
             var url = "http://api.thriftdb.com/api.hnsearch.com/items/_search?start={0}&limit={1}&q=nsa";
-            
 
-            var s = GetHNhits(http,url,0).ToObservable(NewThreadScheduler.Default)
-                .SelectMany(_ => new int[]{(int)_.item.points})
-                .Scan(new { count = 0, points = 0 }, (working, current) => new { count = working.count + 1, points = (current - working.points) / (working.count + 1) + working.points })
+            var s = GetHNhits(http, url, 0).ToObservable(NewThreadScheduler.Default)
+                //.Take(40)
+                .GroupBy(_ => (int)_.item.num_comments > 5)
+                .SelectMany(grp => grp
+                    //.Average(_ => _.item.points)
+                    .Scan(new { count = 0, points = 0d }, (working, current) => new { count = working.count + 1, points = ((double)current.item.points - working.points) / (working.count + 1) + working.points })
+                    .Select(_ => new {num_comments = grp.Key, points = (int)_.points}))                    
                 .Subscribe(Console.WriteLine);
             
             Console.ReadLine();
             Console.WriteLine("Cancelling...");
             s.Dispose();
+
+            Console.ReadLine();
         }
 
         private static IEnumerable<dynamic> GetHNhits(HttpClient http, string urltemplate, int nextResult)
